@@ -13,84 +13,100 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
     <style>
-        #map { height: calc(100vh - 64px); }
-        .sidebar { height: calc(100vh - 64px); }
-        /* Style pour les select afin qu'ils ressemblent aux inputs */
+        #map { height: calc(100vh - 130px); }
+        .sidebar { height: calc(100vh - 130px); }
         select {
             -webkit-appearance: none;
             -moz-appearance: none;
             appearance: none;
-            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>');
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="%234B5563" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>');
             background-repeat: no-repeat;
-            background-position: right 10px center;
+            background-position: right 8px center;
         }
     </style>
 </head>
 <body class="bg-gray-100 font-sans overflow-hidden">
 
     <header class="bg-blue-900 text-white p-4 flex justify-between items-center shadow-md h-16 z-50 relative">
-        <h1 class="text-xl font-bold">🏢 Observatoire du Bâtiment</h1>
         <div class="flex items-center space-x-3">
-            <button onclick="openFormModal(null)" class="bg-green-600 hover:bg-green-500 text-white px-4 py-1.5 rounded text-sm font-semibold transition">
-                + Ajouter manuellement
+            <span class="text-2xl">🏢</span>
+            <h1 class="text-xl font-bold tracking-wide">Observatoire du Bâtiment <span class="text-xs bg-blue-700 px-2 py-0.5 rounded font-mono">v2.0</span></h1>
+        </div>
+        <div class="flex items-center space-x-3">
+            <button onclick="openFormModal(null)" class="bg-green-600 hover:bg-green-500 text-white px-4 py-1.5 rounded text-sm font-semibold transition shadow-sm">
+                + Ajouter un bâtiment
             </button>
             <div class="flex items-center space-x-2 bg-blue-800 p-1.5 rounded border border-blue-700">
-                <span class="text-sm">Importer Excel :</span>
+                <span class="text-sm font-medium">Importer un Excel :</span>
                 <input type="file" id="excel-file" accept=".xlsx, .xls" class="text-sm text-gray-300 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-500 cursor-pointer"/>
             </div>
         </div>
     </header>
 
+    <section class="bg-white border-b border-gray-200 px-4 py-2.5 flex flex-wrap gap-3 items-center shadow-sm z-40 relative h-16">
+        <span class="text-xs font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1">
+            🔍 Filtres :
+        </span>
+        <div class="grid grid-cols-6 gap-3 flex-1">
+            <select id="filter-operateur" onchange="applyFilters()" class="border border-gray-300 rounded px-2 py-1 text-xs bg-gray-50 font-medium text-gray-700 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                <option value="">Opérateur (Tous)</option>
+            </select>
+            <select id="filter-type-projet" onchange="applyFilters()" class="border border-gray-300 rounded px-2 py-1 text-xs bg-gray-50 font-medium text-gray-700 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                <option value="">Type de projet (Tous)</option>
+            </select>
+            <select id="filter-typologie" onchange="applyFilters()" class="border border-gray-300 rounded px-2 py-1 text-xs bg-gray-50 font-medium text-gray-700 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                <option value="">Typologie bâtiment (Tous)</option>
+            </select>
+            <select id="filter-usage" onchange="applyFilters()" class="border border-gray-300 rounded px-2 py-1 text-xs bg-gray-50 font-medium text-gray-700 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                <option value="">Usage bâtiment (Tous)</option>
+            </select>
+            <select id="filter-referentiel" onchange="applyFilters()" class="border border-gray-300 rounded px-2 py-1 text-xs bg-gray-50 font-medium text-gray-700 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                <option value="">Référentiel (Tous)</option>
+            </select>
+            <select id="filter-region" onchange="applyFilters()" class="border border-gray-300 rounded px-2 py-1 text-xs bg-gray-50 font-medium text-gray-700 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                <option value="">Région (Tous)</option>
+            </select>
+        </div>
+        <button onclick="resetFilters()" class="text-xs text-blue-600 hover:text-blue-800 font-semibold px-2 py-1">Réinitialiser</button>
+    </section>
+
     <main class="flex w-full">
         <div id="map" class="w-full transition-all duration-300 z-10"></div>
         
-        <div id="sidebar" class="w-0 sidebar bg-white shadow-2xl overflow-y-auto transition-all duration-300 border-l border-gray-200 z-20">
-            <div class="p-6">
-                <div class="flex justify-between items-center border-b pb-4 mb-4">
-                    <h2 id="dash-title" class="text-2xl font-bold text-blue-900">Détails du projet</h2>
-                    <button onclick="closeSidebar()" class="text-gray-500 hover:text-red-500 text-2xl font-bold">&times;</button>
+        <div id="sidebar" class="w-0 sidebar bg-slate-50 shadow-2xl overflow-y-auto transition-all duration-300 border-l border-gray-200 z-20">
+            <div class="p-5">
+                <div class="flex justify-between items-center border-b border-gray-200 pb-3 mb-4">
+                    <div>
+                        <span id="dash-badge" class="text-[10px] uppercase font-bold tracking-widest bg-blue-100 text-blue-800 px-2 py-0.5 rounded">Projet</span>
+                        <h2 id="dash-title" class="text-xl font-black text-slate-800 mt-1">Détails du bâtiment</h2>
+                    </div>
+                    <button onclick="closeSidebar()" class="text-gray-400 hover:text-red-500 text-2xl font-bold transition">&times;</button>
                 </div>
-                <div id="dash-content" class="space-y-6"></div>
+                <div id="dash-content" class="space-y-5"></div>
             </div>
         </div>
     </main>
 
-    <div id="form-modal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+    <div id="form-modal" class="hidden fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 backdrop-blur-xs">
         <div class="bg-white rounded-xl shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col overflow-hidden">
-            
             <div class="bg-blue-900 text-white p-4 flex justify-between items-center">
-                <h3 class="text-lg font-bold flex items-center gap-2">
-                    📝 Fiche d'entrée de données <span id="modal-mode-badge" class="text-xs bg-blue-700 px-2 py-0.5 rounded"></span>
-                </h3>
+                <h3 class="text-lg font-bold flex items-center gap-2">📝 Formulaire de Saisie</h3>
                 <button onclick="closeFormModal()" class="text-white hover:text-gray-300 text-2xl font-bold">&times;</button>
             </div>
-            
-            <form id="building-form" class="p-6 overflow-y-auto space-y-8 flex-1 bg-gray-50">
-                <div id="form-dynamic-fields" class="space-y-8">
-                    </div>
+            <form id="building-form" class="p-6 overflow-y-auto space-y-6 flex-1 bg-gray-50">
+                <div id="form-dynamic-fields" class="space-y-6"></div>
             </form>
-            
-            <div class="bg-white border-t p-4 flex justify-between items-center space-x-3">
-                <div class="flex items-center text-red-600 bg-red-50 p-2 rounded border border-red-200 hidden" id="geoloc-error-footer">
-                    <span class="mr-2">⚠️</span>
-                    <span class="text-xs font-medium">Erreur API. Si vous lancez le fichier localement, votre navigateur bloque peut-être l'appel. Essayez d'utiliser un serveur local ou un autre navigateur.</span>
-                </div>
-                <div class="flex flex-1 justify-end space-x-3">
-                    <button type="button" onclick="closeFormModal()" class="px-5 py-2 bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold rounded-lg transition">
-                        Annuler
-                    </button>
-                    <button type="button" id="submit-form-btn" onclick="submitForm()" class="px-5 py-2 bg-green-600 hover:bg-green-500 text-white font-semibold rounded-lg transition flex items-center gap-2">
-                        <span id="btn-spinner" class="hidden">🔄</span> 💾 Valider et Placer
-                    </button>
-                </div>
+            <div class="bg-white border-t p-4 flex justify-end space-x-3">
+                <button type="button" onclick="closeFormModal()" class="px-4 py-2 bg-gray-300 hover:bg-gray-400 text-gray-800 rounded font-semibold transition text-sm">Annuler</button>
+                <button type="button" onclick="submitForm()" class="px-5 py-2 bg-green-600 hover:bg-green-500 text-white rounded font-semibold transition text-sm">💾 Enregistrer sur la carte</button>
             </div>
         </div>
     </div>
 
     <script>
-        // 1. CONFIGURATION DES DONNÉES, THÉMATIQUES ET OPTIONS DE MENUS DÉROULANTS
+        // 1. ARCHITECTURE DES DONNÉES
         const thematiques = {
-            "🧱 Informations Générales": ["Nom du projet", "Adresse de l'opération", "Code postal", "Ville", "Département", "Région", "Filiale AL responsable du projet", "Opération en VEFA / MOD", "Si VEFA nom du promoteur/bailleur", "Type de projet", "Typologie de bâtiment", "Description du bâtiment", "Usage du bâtiment", "Nombre de logements", "Nombre de bâtiments", "Typologie de logements", "Nombre de m2 - SHAB / Sref", "Année de construction"],
+            "🧱 Informations Générales": ["Nom du projet", "Opérateur", "Adresse de l'opération", "Code postal", "Ville", "Département", "Région", "Filiale AL responsable du projet", "Opération en VEFA / MOD", "Si VEFA nom du promoteur/bailleur", "Type de projet", "Typologie de bâtiment", "Description du bâtiment", "Usage du bâtiment", "Nombre de logements", "Nombre de bâtiments", "Typologie de logements", "Nombre de m2 - SHAB / Sref", "Année de construction"],
             "🩺 Qualité & Conformité": ["Version de référentiel", "Mentions", "Nbr de non-conformités conception", "Nbr de non-conformités exécution", "Nbr de non-conformités avant travaux", "Nbr de non-conformités après travaux"],
             "🌡️ Performance Énergétique": ["Réglementation", "Performances", "Profils", "Bbio", "Bbio Max", "Gain Bbio", "Cep", "Cep Max", "Gain Cep", "Cepnr", "Cepnr Max", "Gain Cepnr", "Ubat", "DPE avant travaux", "DPE après travaux (prévisionel)", "DPE après travaux (final)", "Cep avant travaux", "Cep après travaux (prévisionel)", "Cep après travaux (final)", "Emissions GES avant travaux", "Emissions GES après travaux (prévisionnel)", "Emissions GES après travaux (final)", "ENR oui/non", "ENR type"],
             "🏗️ Structure & Matériaux": ["Structure", "Planchers hauts", "Parois verticales", "Planchers bas", "Menuiseries extérieures", "Isolation façade", "Menuiseries", "Acoustique extérieur", "Acoustique aérien", "Acoutique, bruits de choc", "Matériaux recyclés", "Matériaux réutilisés", "Économie circulaire", "Aménagement intérieur"],
@@ -99,229 +115,272 @@
             "📉 Analyse Carbone (Lots IC)": ["Ic composants bâtiment", "Ic composants lot 1 - VRD", "Ic composants lot 2 - Fondations et infrastructures", "Ic composants lot 3 - Superstructure – Maçonnerie", "Ic composants lot 4 - Superstructure – Couverture – Étanchéité – Charpente – Zinguerie", "Ic composants lot 5 - Cloisonnement - Doublage - Plafonds suspendus - Menuiseries intérieures", "Ic composants lot 6 - Façades et menuiseries extérieures", "Ic composants lot 7 - Revêtements des sols, murs et plafonds - Chape - Peintures - Produits de décoration", "Ic composants lot 8 - CVC", "Ic composants lot 9 - Plomberie-sanitaire", "Ic composants lot 10 - Réseaux d'énergie (courant fort)", "Ic composants lot 11 - Réseaux de communication (courant faible)", "Ic composants lot 12 - Appareils élévateurs et autres équipements de transport intérieur", "Ic composants lot 13 - Equipements de production locale d'électricité", "Ic énergie bâtiment", "Ic énergie - Chauffage", "Ic énergie - Refroidissement", "Ic énergie - ECS", "Ic énergie - Auxiliaires ventilation", "Ic énergie - Auxiliaires distribution", "Ic énergie - Déplacements (ascenseurs, escalators, parkings)"]
         };
 
-        // Définition des champs devant être des menus déroulants et leurs options
         const dropdownOptions = {
+            "Opérateur": ["Action Logement", "Bailleur Social A", "Promoteur Privé B", "Collectivité", "Opérateur Public"],
             "Région": ["Auvergne-Rhône-Alpes", "Bourgogne-Franche-Comté", "Bretagne", "Centre-Val de Loire", "Corse", "Grand Est", "Hauts-de-France", "Île-de-France", "Normandie", "Nouvelle-Aquitaine", "Occitanie", "Pays de la Loire", "Provence-Alpes-Côte d'Azur"],
-            "Opération en VEFA / MOD": ["Oui", "Non"],
             "Type de projet": ["Neuf", "Rénovation"],
-            "Typologie de bâtiment": ["Individuel", "Individuel groupé", "Collectif", "Mixte", "Tertiaire"],
-            "Usage du bâtiment": ["Logement", "Bureau", "Enseignement", "Hôtel", "Commerce", "Mixte"],
-            "Structure": ["Béton armé", "Bois", "Métal", "Maçonnerie", "Mixte"],
-            "Mode de chauffage": ["Individuel Gaz", "Collectif Gaz", "Électrique Joule", "PAC Individuelle Air/Air", "PAC Individuelle Air/Eau", "Réseau de Chaleur Urbain"],
-            "DPE avant travaux": ["A", "B", "C", "D", "E", "F", "G", "Vierge"],
-            "DPE après travaux (final)": ["A", "B", "C", "D", "E", "F", "G"],
-            "ENR oui/non": ["Oui", "Non"]
+            "Typologie de bâtiment": ["Individuel", "Collectif", "Tertiaire", "Mixte"],
+            "Usage du bâtiment": ["Logement", "Bureau", "Commerce", "Enseignement"],
+            "DPE avant travaux": ["A", "B", "C", "D", "E", "F", "G"],
+            "DPE après travaux (final)": ["A", "B", "C", "D", "E", "F", "G"]
         };
 
-        // 2. INITIALISATION CARTE
+        // Base de données locale de l'application (State)
+        let state = {
+            buildings: [] // Contient des objets { id, lat, lng, data, marker }
+        };
+
+        // 2. INITIALISATION MAP
         const map = L.map('map').setView([46.603354, 1.888334], 6);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(map);
         let markersGroup = L.layerGroup().addTo(map);
 
-        // 3. GÉNÉRATION DYNAMIQUE DU FORMULAIRE ADAPTATIVE (Texte ou Select)
+        // 3. GENERER FORMULAIRE DANS LA MODALE
         function genererFormulaire() {
             const container = document.getElementById('form-dynamic-fields');
             container.innerHTML = "";
-
             for (const [theme, fields] of Object.entries(thematiques)) {
-                let sectionHtml = `
-                    <div class="bg-white p-5 rounded-lg border border-gray-200 shadow-sm">
-                        <h4 class="text-md font-bold text-blue-900 mb-4 border-b pb-2 flex items-center">${theme}</h4>
-                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">`;
-
+                let html = `<div class="bg-white p-4 rounded-xl border border-gray-200 shadow-xs"><h4 class="text-sm font-bold text-blue-900 mb-3 border-b pb-1">${theme}</h4><div class="grid grid-cols-1 md:grid-cols-3 gap-3">`;
                 fields.forEach(field => {
                     const safeId = "input-" + field.replace(/[^a-zA-Z0-9]/g, "-");
-                    let inputElement = "";
-
-                    if (dropdownOptions[field]) {
-                        // C'est un champ menu déroulant (Select)
-                        inputElement = `<select data-field="${field}" id="${safeId}" class="border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50 focus:bg-white cursor-pointer">
-                                            <option value="">-- Sélectionner --</option>
-                                            ${dropdownOptions[field].map(opt => `<option value="${opt}">${opt}</option>`).join('')}
-                                        </select>`;
-                    } else {
-                        // C'est un champ texte libre par défaut
-                        inputElement = `<input type="text" data-field="${field}" id="${safeId}" class="border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50 focus:bg-white" placeholder="Saisir...">`;
-                    }
-
-                    sectionHtml += `
-                        <div class="flex flex-col">
-                            <label class="text-xs font-semibold text-gray-600 mb-1 truncate" title="${field}">${field}</label>
-                            ${inputElement}
-                        </div>`;
+                    let inputEl = dropdownOptions[field] 
+                        ? `<select data-field="${field}" id="${safeId}" class="border border-gray-300 rounded px-2 py-1.5 text-xs bg-gray-50 focus:bg-white w-full"><option value="">-- Choisir --</option>${dropdownOptions[field].map(o=>`<option value="${o}">${o}</option>`).join('')}</select>`
+                        : `<input type="text" data-field="${field}" id="${safeId}" class="border border-gray-300 rounded px-2 py-1.5 text-xs bg-gray-50 focus:bg-white w-full" placeholder="Saisir...">`;
+                    html += `<div class="flex flex-col"><label class="text-[11px] font-medium text-gray-600 mb-1 truncate">${field}</label>${inputEl}</div>`;
                 });
-
-                sectionHtml += `</div></div>`;
-                container.innerHTML += sectionHtml;
+                html += `</div></div>`;
+                container.innerHTML += html;
             }
         }
         genererFormulaire();
 
-        // 4. GESTION DE L'IMPORT EXCEL
+        // 4. IMPORT EXCEL EN MASSE (GÉOCODAGE MULTIPLE)
         document.getElementById('excel-file').addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (!file) return;
-
             const reader = new FileReader();
-            reader.onload = function(evt) {
+            reader.onload = async function(evt) {
                 const data = evt.target.result;
                 const workbook = XLSX.read(data, { type: 'binary' });
-                const firstSheetName = workbook.SheetNames[0];
-                const worksheet = workbook.Sheets[firstSheetName];
-                const jsonData = XLSX.utils.sheet_to_json(worksheet);
+                const rows = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
                 
-                if (jsonData.length > 0) {
-                    openFormModal(jsonData[0]);
-                } else {
-                    alert("Le fichier Excel est vide.");
+                alert(`Importation de ${rows.length} ligne(s) détectée(s). Début du géocodage automatique...`);
+                
+                for(let row of rows) {
+                    const rue = row["Adresse de l'opération"] || row["nom de la rue"] || "";
+                    const cp = row["Code postal"] || row["code postale"] || "";
+                    const ville = row["Ville"] || row["nom de la ville"] || "";
+                    if(!rue && !ville) continue;
+
+                    try {
+                        const res = await fetch(`https://api-adresse.data.gouv.fr/search/?q=${encodeURIComponent(rue + ' ' + cp + ' ' + ville)}&limit=1`);
+                        const geo = await res.json();
+                        if(geo.features && geo.features.length > 0) {
+                            const coords = geo.features[0].geometry.coordinates;
+                            addBuildingToState(coords[1], coords[0], row);
+                        }
+                    } catch(err) { console.error("Erreur ligne :", err); }
                 }
+                populateFilterMenus();
+                applyFilters();
+                alert("Importation terminée et filtres mis à jour !");
             };
             reader.readAsBinaryString(file);
             this.value = "";
         });
 
-        // 5. OUVERTURE / FERMETURE DE LA MODALE
-        function openFormModal(data = null) {
-            document.getElementById('building-form').reset();
-            document.getElementById('geoloc-error-footer').classList.add('hidden'); // Cacher erreur précédente
-            const badge = document.getElementById('modal-mode-badge');
+        // 5. AJOUTER UN BÂTIMENT AU STATE
+        function addBuildingToState(lat, lng, rowData) {
+            // Unification des clés pour les filtres si l'excel a des en-têtes alternatifs
+            if(rowData["nom de la rue"] && !rowData["Adresse de l'opération"]) rowData["Adresse de l'opération"] = rowData["nom de la rue"];
+            if(rowData["code postale"] && !rowData["Code postal"]) rowData["Code postal"] = rowData["code postale"];
+            if(rowData["nom de la ville"] && !rowData["Ville"]) rowData["Ville"] = rowData["nom de la ville"];
+
+            const id = Date.now() + Math.random();
+            const marker = L.marker([lat, lng]);
             
-            if (data) {
-                badge.innerText = "Pré-rempli via Excel";
-                badge.className = "text-xs bg-orange-500 text-white px-2 py-0.5 rounded";
+            marker.on('click', () => {
+                openSidebar(rowData["Nom du projet"] || "Bâtiment sans nom", rowData);
+                map.setView([lat, lng], 15);
+            });
+
+            state.buildings.push({ id, lat, lng, data: rowData, marker });
+        }
+
+        // 6. GESTION DES FILTRES DE LA CARTE
+        function populateFilterMenus() {
+            const filters = {
+                "operateur": "Opérateur", "type-projet": "Type de projet", "typologie": "Typologie de bâtiment",
+                "usage": "Usage du bâtiment", "referentiel": "Version de référentiel", "region": "Région"
+            };
+            
+            for(let [id, fieldName] of Object.entries(filters)) {
+                const select = document.getElementById("filter-" + id);
+                const currentVal = select.value;
+                // Extraction des valeurs uniques non vides de la BDD
+                const uniques = [...new Set(state.buildings.map(b => b.data[fieldName]).filter(v => v))];
                 
-                // Remplissage des champs existants dans l'Excel (Text et Select)
-                const inputs = document.querySelectorAll('#building-form [data-field]');
-                inputs.forEach(input => {
-                    const fieldName = input.getAttribute('data-field');
-                    if (data[fieldName] !== undefined) {
-                        input.value = data[fieldName];
-                    }
+                select.innerHTML = `<option value="">${fieldName} (${uniques.length})</option>`;
+                uniques.sort().forEach(val => {
+                    select.innerHTML += `<option value="${val}" ${val === currentVal ? 'selected':''}>${val}</option>`;
                 });
-            } else {
-                badge.innerText = "Saisie Manuelle";
-                badge.className = "text-xs bg-green-600 text-white px-2 py-0.5 rounded";
             }
+        }
+
+        function applyFilters() {
+            markersGroup.clearLayers();
             
+            const fOp = document.getElementById('filter-operateur').value;
+            const fTy = document.getElementById('filter-type-projet').value;
+            const fTbg = document.getElementById('filter-typologie').value;
+            const fUs = document.getElementById('filter-usage').value;
+            const fRef = document.getElementById('filter-referentiel').value;
+            const fReg = document.getElementById('filter-region').value;
+
+            let visibleMarkers = [];
+
+            state.buildings.forEach(b => {
+                const d = b.data;
+                const match = (!fOp || d["Opérateur"] == fOp) &&
+                              (!fTy || d["Type de projet"] == fTy) &&
+                              (!fTbg || d["Typologie de bâtiment"] == fTbg) &&
+                              (!fUs || d["Usage du bâtiment"] == fUs) &&
+                              (!fRef || d["Version de référentiel"] == fRef) &&
+                              (!fReg || d["Région"] == fReg);
+
+                if(match) {
+                    b.marker.addTo(markersGroup);
+                    visibleMarkers.push(b.marker);
+                }
+            });
+
+            if(visibleMarkers.length > 0) {
+                const group = L.featureGroup(visibleMarkers);
+                map.fitBounds(group.getBounds().pad(0.1));
+            }
+        }
+
+        function resetFilters() {
+            document.querySelectorAll('section select').forEach(s => s.value = "");
+            applyFilters();
+        }
+
+        // 7. ACTIONS DU FORMULAIRE MANUEL
+        function openFormModal() {
+            document.getElementById('building-form').reset();
             document.getElementById('form-modal').classList.remove('hidden');
         }
-
-        function closeFormModal() {
-            document.getElementById('form-modal').classList.add('hidden');
-        }
-
-        // 6. VALIDATION DU FORMULAIRE ET GÉOCODAGE
+        function closeFormModal() { document.getElementById('form-modal').classList.add('hidden'); }
+        
         async function submitForm() {
-            // UI : Afficher chargement
-            const btn = document.getElementById('submit-form-btn');
-            const spinner = document.getElementById('btn-spinner');
-            const errorFooter = document.getElementById('geoloc-error-footer');
-            btn.disabled = true;
-            spinner.classList.remove('hidden');
-            errorFooter.classList.add('hidden');
-
             const inputs = document.querySelectorAll('#building-form [data-field]');
             let rowData = {};
-            inputs.forEach(input => rowData[input.getAttribute('data-field')] = input.value.trim());
+            inputs.forEach(i => rowData[i.getAttribute('data-field')] = i.value.trim());
 
-            // Adresse indispensable
-            const nomProjet = rowData["Nom du projet"] || "Bâtiment sans nom";
-            const rue = rowData["Adresse de l'opération"] || "";
-            const cp = rowData["Code postal"] || "";
-            const ville = rowData["Ville"] || "";
-
-            if (!rue && !ville) {
-                alert("Veuillez renseigner au moins une adresse ou une ville.");
-                resetSubmitBtn();
-                return;
-            }
-
-            const queryAddress = `${rue}, ${cp} ${ville}`;
-            
+            const query = `${rowData["Adresse de l'opération"]}, ${rowData["Code postal"]} ${rowData["Ville"]}`;
             try {
-                // Appel API Adresse avec contrôle strict
-                const response = await fetch(`https://api-adresse.data.gouv.fr/search/?q=${encodeURIComponent(queryAddress)}&limit=1`, {
-                    method: 'GET',
-                    mode: 'cors', // Pour essayer de forcer le cross-origin si local
-                    headers: { 'Accept': 'application/json' }
-                });
-
-                if (!response.ok) throw new Error("Erreur réseau");
-
-                const result = await response.json();
-                
-                if (result.features && result.features.length > 0) {
-                    const coordinates = result.features[0].geometry.coordinates;
-                    const lat = coordinates[1];
-                    const lng = coordinates[0];
-                    
-                    // Création du Marqueur
-                    const marker = L.marker([lat, lng]).addTo(markersGroup);
-                    marker.on('click', () => {
-                        openSidebar(nomProjet, rowData);
-                        map.setView([lat, lng], 15);
-                    });
-
-                    map.setView([lat, lng], 14);
+                const res = await fetch(`https://api-adresse.data.gouv.fr/search/?q=${encodeURIComponent(query)}&limit=1`);
+                const geo = await res.json();
+                if(geo.features && geo.features.length > 0) {
+                    const coords = geo.features[0].geometry.coordinates;
+                    addBuildingToState(coords[1], coords[0], rowData);
+                    populateFilterMenus();
+                    applyFilters();
                     closeFormModal();
-                } else {
-                    alert("L'adresse exacte n'a pas pu être géolocalisée par l'API. Essayez d'affiner la ville ou le code postal.");
-                }
-            } catch (error) {
-                console.error("Détails de l'erreur API :", error);
-                // Affichage explicite de l'erreur dans le footer de la modale
-                errorFooter.classList.remove('hidden');
-            } finally {
-                resetSubmitBtn();
+                } else { alert("Impossible de géolocaliser cette adresse."); }
+            } catch(e) { alert("Erreur de connexion API."); }
+        }
+
+        // 8. DASHBOARD GRAPHIQUE (SIDEBAR ENRICHIE)
+        function getDpeBadge(val) {
+            if(!val) return '';
+            const letter = val.trim().toUpperCase();
+            const colors = { 'A':'bg-green-700 text-white','B':'bg-green-500 text-white','C':'bg-lime-500 text-slate-900','D':'bg-yellow-400 text-slate-900','E':'bg-orange-400 text-slate-900','F':'bg-orange-600 text-white','G':'bg-red-600 text-white'};
+            return `<span class="${colors[letter] || 'bg-slate-400 text-white'} font-black px-2.5 py-1 rounded text-sm shadow-xs">${letter}</span>`;
+        }
+
+        function getNcIndicator(theme, data) {
+            // Recherche s'il y a des non-conformités dans cette ligne
+            let totalNc = 0;
+            const fields = ["Nbr de non-conformités conception", "Nbr de non-conformités exécution", "Nbr de non-conformités avant travaux", "Nbr de non-conformités après travaux"];
+            fields.forEach(f => { if(data[f]) totalNc += parseInt(data[f]) || 0; });
+            
+            if(theme.includes("Qualité") && totalNc > 0) {
+                return `<span class="bg-red-100 text-red-800 text-[10px] px-2 py-0.5 rounded-full font-bold animate-pulse">⚠️ ${totalNc} Alertes non-conformité</span>`;
+            } else if (theme.includes("Qualité")) {
+                return `<span class="bg-green-100 text-green-800 text-[10px] px-2 py-0.5 rounded-full font-bold">✓ Conforme</span>`;
             }
+            return '';
         }
 
-        function resetSubmitBtn() {
-            const btn = document.getElementById('submit-form-btn');
-            const spinner = document.getElementById('btn-spinner');
-            btn.disabled = false;
-            spinner.classList.add('hidden');
-        }
-
-        // 7. DASHBOARD DE CONSULTATION (SIDEBAR)
         function openSidebar(title, data) {
             document.getElementById('map').classList.replace('w-full', 'w-2/3');
-            const sidebar = document.getElementById('sidebar');
-            sidebar.classList.replace('w-0', 'w-1/3');
+            document.getElementById('sidebar').classList.replace('w-0', 'w-1/3');
             
             document.getElementById('dash-title').innerText = title;
-            let htmlContent = "";
+            document.getElementById('dash-badge').innerText = data["Opérateur"] || "Opérateur non spécifié";
             
+            let html = "";
+
+            // ⚡ BLOC METRICS EXPRESS (GRAPHIC CARDS EN HAUT)
+            if(data["Coût global"] || data["DPE après travaux (final)"] || data["Année de construction"]) {
+                html += `<div class="grid grid-cols-3 gap-2 mb-4">
+                    <div class="bg-white p-2.5 rounded-xl border border-slate-200 text-center shadow-xs">
+                        <span class="text-[10px] font-bold text-slate-400 block uppercase">DPE Prévu</span>
+                        <div class="mt-1.5">${getDpeBadge(data["DPE après travaux (final)"] || data["DPE après travaux (prévisionel)"]) || '<span class="text-xs text-gray-400">-</span>'}</div>
+                    </div>
+                    <div class="bg-white p-2.5 rounded-xl border border-slate-200 text-center shadow-xs flex flex-col justify-center">
+                        <span class="text-[10px] font-bold text-slate-400 block uppercase">Budget Global</span>
+                        <span class="text-xs font-black text-blue-900 mt-1 truncate">${data["Coût global"] ? data["Coût global"]+' €' : '-'}</span>
+                    </div>
+                    <div class="bg-white p-2.5 rounded-xl border border-slate-200 text-center shadow-xs flex flex-col justify-center">
+                        <span class="text-[10px] font-bold text-slate-400 block uppercase">Construction</span>
+                        <span class="text-sm font-black text-slate-700 mt-1">${data["Année de construction"] || '-'}</span>
+                    </div>
+                </div>`;
+            }
+
+            // BOUCLE THÉMATIQUE DES BLOCS DE DONNÉES
             for (const [themeName, fields] of Object.entries(thematiques)) {
                 let fieldsHtml = "";
                 
                 fields.forEach(field => {
                     if (data[field]) {
+                        let innerValueHtml = `<span class="text-slate-800 text-right font-semibold">${data[field]}</span>`;
+                        
+                        // Customisation graphique pour les DPE/GES dans les lignes
+                        if(field.includes("DPE") || field.includes("GES")) {
+                            innerValueHtml = `<div class="flex items-center gap-2">${getDpeBadge(data[field])}</div>`;
+                        }
+
                         fieldsHtml += `
-                            <div class="flex justify-between py-1.5 border-b border-gray-100 text-sm gap-4">
-                                <span class="text-gray-600 font-medium">${field} :</span>
-                                <span class="text-gray-900 text-right font-semibold">${data[field]}</span>
+                            <div class="flex justify-between items-center py-2 border-b border-slate-100 text-xs">
+                                <span class="text-slate-500 font-medium pr-2">${field}</span>
+                                ${innerValueHtml}
                             </div>`;
                     }
                 });
                 
                 if (fieldsHtml !== "") {
-                    htmlContent += `
-                        <div class="bg-gray-50 p-4 rounded-lg border border-gray-200 shadow-sm">
-                            <h3 class="text-md font-bold text-blue-800 mb-2 border-b border-blue-200 pb-1">${themeName}</h3>
-                            <div class="space-y-1">${fieldsHtml}</div>
+                    html += `
+                        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-xs">
+                            <div class="flex justify-between items-center mb-2 border-b border-slate-100 pb-1.5">
+                                <h3 class="text-xs font-black text-slate-700 uppercase tracking-wider">${themeName}</h3>
+                                ${getNcIndicator(themeName, data)}
+                            </div>
+                            <div class="divide-y divide-slate-50">${fieldsHtml}</div>
                         </div>`;
                 }
             }
             
-            document.getElementById('dash-content').innerHTML = htmlContent;
-            setTimeout(() => { map.invalidateSize(); }, 300);
+            document.getElementById('dash-content').innerHTML = html;
+            setTimeout(() => { map.invalidateSize(); }, 200);
         }
 
         function closeSidebar() {
             document.getElementById('map').classList.replace('w-2/3', 'w-full');
             document.getElementById('sidebar').classList.replace('w-1/3', 'w-0');
-            setTimeout(() => { map.invalidateSize(); }, 300);
+            setTimeout(() => { map.invalidateSize(); }, 200);
         }
     </script>
 </body>
