@@ -19,47 +19,63 @@
 </head>
 <body class="bg-gray-100 font-sans overflow-hidden">
 
-    <header class="bg-blue-900 text-white p-4 flex justify-between items-center shadow-md h-16">
-        <h1 class="text-xl font-bold">🏢 Observatoire du Bâtiment - Maquette</h1>
-        <div class="flex items-center space-x-2 bg-blue-800 p-1.5 rounded border border-blue-700">
-            <span class="text-sm">Importer Excel :</span>
-            <input type="file" id="excel-file" accept=".xlsx, .xls" class="text-sm text-gray-300 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-500 cursor-pointer"/>
+    <header class="bg-blue-900 text-white p-4 flex justify-between items-center shadow-md h-16 z-50 relative">
+        <h1 class="text-xl font-bold">🏢 Observatoire du Bâtiment</h1>
+        <div class="flex items-center space-x-3">
+            <button onclick="openFormModal(null)" class="bg-green-600 hover:bg-green-500 text-white px-4 py-1.5 rounded text-sm font-semibold transition">
+                + Ajouter manuellement
+            </button>
+            <div class="flex items-center space-x-2 bg-blue-800 p-1.5 rounded border border-blue-700">
+                <span class="text-sm">Importer Excel :</span>
+                <input type="file" id="excel-file" accept=".xlsx, .xls" class="text-sm text-gray-300 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-500 cursor-pointer"/>
+            </div>
         </div>
     </header>
 
     <main class="flex w-full">
-        
         <div id="map" class="w-full transition-all duration-300 z-10"></div>
         
-        <div id="sidebar" class="w-0 sidebar bg-white shadow-2xl overflow-y-auto transition-all duration-300 border-l border-gray-200">
+        <div id="sidebar" class="w-0 sidebar bg-white shadow-2xl overflow-y-auto transition-all duration-300 border-l border-gray-200 z-20">
             <div class="p-6">
                 <div class="flex justify-between items-center border-b pb-4 mb-4">
                     <h2 id="dash-title" class="text-2xl font-bold text-blue-900">Détails du projet</h2>
                     <button onclick="closeSidebar()" class="text-gray-500 hover:text-red-500 text-2xl font-bold">&times;</button>
                 </div>
-                
-                <div id="dash-content" class="space-y-6">
-                    <p class="text-gray-500 italic">Cliquez sur un marqueur pour afficher les données.</p>
-                </div>
+                <div id="dash-content" class="space-y-6"></div>
             </div>
         </div>
-        
     </main>
 
+    <div id="form-modal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col overflow-hidden">
+            
+            <div class="bg-blue-900 text-white p-4 flex justify-between items-center">
+                <h3 class="text-lg font-bold flex items-center gap-2">
+                    📝 Fiche d'entrée de données <span id="modal-mode-badge" class="text-xs bg-blue-700 px-2 py-0.5 rounded"></span>
+                </h3>
+                <button onclick="closeFormModal()" class="text-white hover:text-gray-300 text-2xl font-bold">&times;</button>
+            </div>
+            
+            <form id="building-form" class="p-6 overflow-y-auto space-y-8 flex-1 bg-gray-50">
+                <div id="form-dynamic-fields" class="space-y-8">
+                    </div>
+            </form>
+            
+            <div class="bg-white border-t p-4 flex justify-end space-x-3">
+                <button type="button" onclick="closeFormModal()" class="px-5 py-2 bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold rounded-lg transition">
+                    Annuler
+                </button>
+                <button type="button" onclick="submitForm()" class="px-5 py-2 bg-green-600 hover:bg-green-500 text-white font-semibold rounded-lg transition">
+                    💾 Valider et Placer sur la carte
+                </button>
+            </div>
+        </div>
+    </div>
+
     <script>
-        // 1. Initialisation de la carte (centrée sur la France par défaut)
-        const map = L.map('map').setView([46.603354, 1.888334], 6);
-        
-        // Ajout d'un fond de carte (OpenStreetMap standard, modifiable par le cadastre plus tard)
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap contributors'
-        }).addTo(map);
-
-        let markersGroup = L.layerGroup().addTo(map);
-
-        // Définition des thématiques pour l'affichage organisé
+        // 1. CONFIGURATION DES DONNÉES ET THÉMATIQUES
         const thematiques = {
-            "🧱 Informations Générales": ["Adresse de l'opération", "Code postal", "Ville", "Département", "Région", "Filiale AL responsable du projet", "Opération en VEFA / MOD", "Si VEFA nom du promoteur/bailleur", "Type de projet", "Typologie de bâtiment", "Description du bâtiment", "Usage du bâtiment", "Nombre de logements", "Nombre de bâtiments", "Typologie de logements", "Nombre de m2 - SHAB / Sref", "Année de construction"],
+            "🧱 Informations Générales": ["Nom du projet", "Adresse de l'opération", "Code postal", "Ville", "Département", "Région", "Filiale AL responsable du projet", "Opération en VEFA / MOD", "Si VEFA nom du promoteur/bailleur", "Type de projet", "Typologie de bâtiment", "Description du bâtiment", "Usage du bâtiment", "Nombre de logements", "Nombre de bâtiments", "Typologie de logements", "Nombre de m2 - SHAB / Sref", "Année de construction"],
             "🩺 Qualité & Conformité": ["Version de référentiel", "Mentions", "Nbr de non-conformités conception", "Nbr de non-conformités exécution", "Nbr de non-conformités avant travaux", "Nbr de non-conformités après travaux"],
             "🌡️ Performance Énergétique": ["Réglementation", "Performances", "Profils", "Bbio", "Bbio Max", "Gain Bbio", "Cep", "Cep Max", "Gain Cep", "Cepnr", "Cepnr Max", "Gain Cepnr", "Ubat", "DPE avant travaux", "DPE après travaux (prévisionel)", "DPE après travaux (final)", "Cep avant travaux", "Cep après travaux (prévisionel)", "Cep après travaux (final)", "Emissions GES avant travaux", "Emissions GES après travaux (prévisionnel)", "Emissions GES après travaux (final)", "ENR oui/non", "ENR type"],
             "🏗️ Structure & Matériaux": ["Structure", "Planchers hauts", "Parois verticales", "Planchers bas", "Menuiseries extérieures", "Isolation façade", "Menuiseries", "Acoustique extérieur", "Acoustique aérien", "Acoutique, bruits de choc", "Matériaux recyclés", "Matériaux réutilisés", "Économie circulaire", "Aménagement intérieur"],
@@ -68,7 +84,39 @@
             "📉 Analyse Carbone (Lots IC)": ["Ic composants bâtiment", "Ic composants lot 1 - VRD", "Ic composants lot 2 - Fondations et infrastructures", "Ic composants lot 3 - Superstructure – Maçonnerie", "Ic composants lot 4 - Superstructure – Couverture – Étanchéité – Charpente – Zinguerie", "Ic composants lot 5 - Cloisonnement - Doublage - Plafonds suspendus - Menuiseries intérieures", "Ic composants lot 6 - Façades et menuiseries extérieures", "Ic composants lot 7 - Revêtements des sols, murs et plafonds - Chape - Peintures - Produits de décoration", "Ic composants lot 8 - CVC", "Ic composants lot 9 - Plomberie-sanitaire", "Ic composants lot 10 - Réseaux d'énergie (courant fort)", "Ic composants lot 11 - Réseaux de communication (courant faible)", "Ic composants lot 12 - Appareils élévateurs et autres équipements de transport intérieur", "Ic composants lot 13 - Equipements de production locale d'électricité", "Ic énergie bâtiment", "Ic énergie - Chauffage", "Ic énergie - Refroidissement", "Ic énergie - ECS", "Ic énergie - Auxiliaires ventilation", "Ic énergie - Auxiliaires distribution", "Ic énergie - Déplacements (ascenseurs, escalators, parkings)"]
         };
 
-        // 2. Gestion de l'import Excel
+        // 2. INITIALISATION CARTE
+        const map = L.map('map').setView([46.603354, 1.888334], 6);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(map);
+        let markersGroup = L.layerGroup().addTo(map);
+
+        // 3. GÉNÉRATION DYNAMIQUE DU FORMULAIRE AU CHARGEMENT
+        function genererFormulaire() {
+            const container = document.getElementById('form-dynamic-fields');
+            container.innerHTML = "";
+
+            for (const [theme, fields] of Object.entries(thematiques)) {
+                let sectionHtml = `
+                    <div class="bg-white p-5 rounded-lg border border-gray-200 shadow-sm">
+                        <h4 class="text-md font-bold text-blue-900 mb-4 border-b pb-2 flex items-center">${theme}</h4>
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">`;
+
+                fields.forEach(field => {
+                    // Nettoyage de l'ID pour éviter les caractères spéciaux
+                    const safeId = "input-" + field.replace(/[^a-zA-Z0-9]/g, "-");
+                    sectionHtml += `
+                        <div class="flex flex-col">
+                            <label class="text-xs font-semibold text-gray-600 mb-1 truncate" title="${field}">${field}</label>
+                            <input type="text" data-field="${field}" id="${safeId}" class="border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50 focus:bg-white" placeholder="Saisir...">
+                        </div>`;
+                });
+
+                sectionHtml += `</div></div>`;
+                container.innerHTML += sectionHtml;
+            }
+        }
+        genererFormulaire();
+
+        // 4. GESTION DE L'IMPORT EXCEL
         document.getElementById('excel-file').addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (!file) return;
@@ -77,92 +125,129 @@
             reader.onload = function(evt) {
                 const data = evt.target.result;
                 const workbook = XLSX.read(data, { type: 'binary' });
-                
-                // On prend la première feuille du fichier Excel
                 const firstSheetName = workbook.SheetNames[0];
                 const worksheet = workbook.Sheets[firstSheetName];
-                
-                // Conversion en JSON (tableau d'objets)
                 const jsonData = XLSX.utils.sheet_to_json(worksheet);
                 
-                processGpsAndMarkers(jsonData);
+                if (jsonData.length > 0) {
+                    // On prend la première ligne pour alimenter notre fenêtre de validation
+                    openFormModal(jsonData[0]);
+                } else {
+                    alert("Le fichier Excel est vide.");
+                }
             };
             reader.readAsBinaryString(file);
+            // Reset de l'input pour pouvoir réimporter le même fichier
+            this.value = "";
         });
 
-        // 3. Géocodage via l'API Adresse et ajout des marqueurs
-        async function processGpsAndMarkers(data) {
-            markersGroup.clearLayers(); // On nettoie la carte
+        // 5. OUVERTURE / FERMETURE DE LA MODALE
+        function openFormModal(data = null) {
+            document.getElementById('building-form').reset();
+            const badge = document.getElementById('modal-mode-badge');
             
-            for (let row of data) {
-                // Récupération de l'adresse (Colonnes exactes basées sur vos entêtes ou colonnes A, B, C)
-                // Équivalences souples si les colonnes s'appellent "nom de la rue" ou "Adresse de l'opération"
-                const rue = row["nom de la rue"] || row["Adresse de l'opération"] || "";
-                const ville = row["nom de la ville"] || row["Ville"] || "";
-                const cp = row["code postale"] || row["Code postal"] || "";
-                const nomProjet = row["Nom du projet"] || "Projet sans nom";
-
-                if (!rue && !ville) continue;
-
-                const queryAddress = `${rue}, ${cp} ${ville}`;
+            if (data) {
+                badge.innerText = "Pré-rempli via Excel";
+                badge.className = "text-xs bg-orange-500 text-white px-2 py-0.5 rounded";
                 
-                try {
-                    // Appel de l'API Adresse du gouvernement
-                    const response = await fetch(`https://api-adresse.data.gouv.fr/search/?q=${encodeURIComponent(queryAddress)}&limit=1`);
-                    const result = await response.json();
-                    
-                    if (result.features && result.features.length > 0) {
-                        const coordinates = result.features[0].geometry.coordinates; // [longitude, latitude]
-                        const lat = coordinates[1];
-                        const lng = coordinates[0];
-                        
-                        // Création du marqueur sur la carte
-                        const marker = L.marker([lat, lng]).addTo(markersGroup);
-                        
-                        // Événement au clic sur le marqueur
-                        marker.on('click', () => {
-                            openSidebar(nomProjet, row);
-                            map.setView([lat, lng], 15); // Zoom sur le bâtiment
-                        });
+                // Remplissage des champs existants dans l'Excel
+                const inputs = document.querySelectorAll('#building-form input[data-field]');
+                inputs.forEach(input => {
+                    const fieldName = input.getAttribute('data-field');
+                    if (data[fieldName] !== undefined) {
+                        input.value = data[fieldName];
                     }
-                } catch (error) {
-                    console.error("Erreur de géocodage pour l'adresse : " + queryAddress, error);
-                }
+                });
+            } else {
+                badge.innerText = "Saisie Manuelle";
+                badge.className = "text-xs bg-green-600 text-white px-2 py-0.5 rounded";
             }
             
-            // Ajuster la vue de la carte pour englober tous les marqueurs si présents
-            if (markersGroup.getLayers().length > 0) {
-                const bounds = L.featureGroup(markersGroup.getLayers()).getBounds();
-                map.fitBounds(bounds);
+            document.getElementById('form-modal').classList.remove('hidden');
+        }
+
+        function closeFormModal() {
+            document.getElementById('form-modal').addClass('hidden');
+        }
+
+        // 6. VALIDATION DU FORMULAIRE ET GÉOCODAGE
+        async function submitForm() {
+            const inputs = document.querySelectorAll('#building-form input[data-field]');
+            let rowData = {};
+            
+            inputs.forEach(input => {
+                rowData[input.getAttribute('data-field')] = input.value.trim();
+            });
+
+            // Récupération des données d'adresse indispensables
+            const nomProjet = rowData["Nom du projet"] || "Bâtiment sans nom";
+            const rue = rowData["Adresse de l'opération"] || "";
+            const cp = rowData["Code postal"] || "";
+            const ville = rowData["Ville"] || "";
+
+            if (!rue && !ville) {
+                alert("Veuillez renseigner au moins une adresse ou une ville pour positionner le bâtiment.");
+                return;
+            }
+
+            const queryAddress = `${rue}, ${cp} ${ville}`;
+            
+            try {
+                // Appel API Adresse du gouvernement
+                const response = await fetch(`https://api-adresse.data.gouv.fr/search/?q=${encodeURIComponent(queryAddress)}&limit=1`);
+                const result = await response.json();
+                
+                if (result.features && result.features.length > 0) {
+                    const coordinates = result.features[0].geometry.coordinates;
+                    const lat = coordinates[1];
+                    const lng = coordinates[0];
+                    
+                    // Création du Marqueur
+                    const marker = L.marker([lat, lng]).addTo(markersGroup);
+                    
+                    // On attache les données saisies au clic du marqueur
+                    marker.on('click', () => {
+                        openSidebar(nomProjet, rowData);
+                        map.setView([lat, lng], 15);
+                    });
+
+                    // On centre la carte sur le nouveau point
+                    map.setView([lat, lng], 14);
+                    closeFormModal();
+                    
+                    // Petite notification de succès
+                    alert(`Succès : "${nomProjet}" a été positionné sur la carte.`);
+                } else {
+                    alert("L'adresse n'a pas pu être géolocalisée par l'API. Vérifiez l'orthographe.");
+                }
+            } catch (error) {
+                console.error(error);
+                alert("Erreur lors de la communication avec l'API de géocodage.");
             }
         }
 
-        // 4. Fonctions d'affichage du Dashboard (Sidebar)
-        function openSidebar(title, rowData) {
+        // 7. DASHBOARD DE CONSULTATION (SIDEBAR)
+        function openSidebar(title, data) {
             document.getElementById('map').classList.replace('w-full', 'w-2/3');
             const sidebar = document.getElementById('sidebar');
             sidebar.classList.replace('w-0', 'w-1/3');
             
             document.getElementById('dash-title').innerText = title;
-            
-            // Génération du contenu html par thématique
             let htmlContent = "";
             
             for (const [themeName, fields] of Object.entries(thematiques)) {
                 let fieldsHtml = "";
                 
                 fields.forEach(field => {
-                    // On vérifie si la donnée existe dans la ligne Excel
-                    if (rowData[field] !== undefined) {
+                    if (data[field]) {
                         fieldsHtml += `
                             <div class="flex justify-between py-1.5 border-b border-gray-100 text-sm">
                                 <span class="text-gray-600 font-medium pr-2">${field} :</span>
-                                <span class="text-gray-900 text-right font-semibold">${rowData[field]}</span>
+                                <span class="text-gray-900 text-right font-semibold">${data[field]}</span>
                             </div>`;
                     }
                 });
                 
-                // On n'affiche la thématique que si elle contient au moins une donnée
                 if (fieldsHtml !== "") {
                     htmlContent += `
                         <div class="bg-gray-50 p-4 rounded-lg border border-gray-200 shadow-sm">
@@ -172,9 +257,7 @@
                 }
             }
             
-            document.getElementById('dash-content').innerHTML = htmlContent || "<p class='text-gray-500'>Aucune donnée thématique trouvée.</p>";
-            
-            // Forcer Leaflet à recalculer sa taille suite au changement de largeur de la div
+            document.getElementById('dash-content').innerHTML = htmlContent;
             setTimeout(() => { map.invalidateSize(); }, 300);
         }
 
