@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Maquette - Observatoire du Bâtiment</title>
+    
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+    <style>
+        #map { height: calc(100vh - 64px); }
+        .sidebar { height: calc(100vh - 64px); }
+    </style>
+</head>
+<body class="bg-gray-100 font-sans overflow-hidden">
+
+    <header class="bg-blue-900 text-white p-4 flex justify-between items-center shadow-md h-16">
+        <h1 class="text-xl font-bold">🏢 Observatoire du Bâtiment - Maquette</h1>
+        <div class="flex items-center space-x-2 bg-blue-800 p-1.5 rounded border border-blue-700">
+            <span class="text-sm">Importer Excel :</span>
+            <input type="file" id="excel-file" accept=".xlsx, .xls" class="text-sm text-gray-300 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-500 cursor-pointer"/>
+        </div>
+    </header>
+
+    <main class="flex w-full">
+        
+        <div id="map" class="w-full transition-all duration-300 z-10"></div>
+        
+        <div id="sidebar" class="w-0 sidebar bg-white shadow-2xl overflow-y-auto transition-all duration-300 border-l border-gray-200">
+            <div class="p-6">
+                <div class="flex justify-between items-center border-b pb-4 mb-4">
+                    <h2 id="dash-title" class="text-2xl font-bold text-blue-900">Détails du projet</h2>
+                    <button onclick="closeSidebar()" class="text-gray-500 hover:text-red-500 text-2xl font-bold">&times;</button>
+                </div>
+                
+                <div id="dash-content" class="space-y-6">
+                    <p class="text-gray-500 italic">Cliquez sur un marqueur pour afficher les données.</p>
+                </div>
+            </div>
+        </div>
+        
+    </main>
+
+    <script>
+        // 1. Initialisation de la carte (centrée sur la France par défaut)
+        const map = L.map('map').setView([46.603354, 1.888334], 6);
+        
+        // Ajout d'un fond de carte (OpenStreetMap standard, modifiable par le cadastre plus tard)
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+
+        let markersGroup = L.layerGroup().addTo(map);
+
+        // Définition des thématiques pour l'affichage organisé
+        const thematiques = {
+            "🧱 Informations Générales": ["Adresse de l'opération", "Code postal", "Ville", "Département", "Région", "Filiale AL responsable du projet", "Opération en VEFA / MOD", "Si VEFA nom du promoteur/bailleur", "Type de projet", "Typologie de bâtiment", "Description du bâtiment", "Usage du bâtiment", "Nombre de logements", "Nombre de bâtiments", "Typologie de logements", "Nombre de m2 - SHAB / Sref", "Année de construction"],
+            "🩺 Qualité & Conformité": ["Version de référentiel", "Mentions", "Nbr de non-conformités conception", "Nbr de non-conformités exécution", "Nbr de non-conformités avant travaux", "Nbr de non-conformités après travaux"],
+            "🌡️ Performance Énergétique": ["Réglementation", "Performances", "Profils", "Bbio", "Bbio Max", "Gain Bbio", "Cep", "Cep Max", "Gain Cep", "Cepnr", "Cepnr Max", "Gain Cepnr", "Ubat", "DPE avant travaux", "DPE après travaux (prévisionel)", "DPE après travaux (final)", "Cep avant travaux", "Cep après travaux (prévisionel)", "Cep après travaux (final)", "Emissions GES avant travaux", "Emissions GES après travaux (prévisionnel)", "Emissions GES après travaux (final)", "ENR oui/non", "ENR type"],
+            "🏗️ Structure & Matériaux": ["Structure", "Planchers hauts", "Parois verticales", "Planchers bas", "Menuiseries extérieures", "Isolation façade", "Menuiseries", "Acoustique extérieur", "Acoustique aérien", "Acoutique, bruits de choc", "Matériaux recyclés", "Matériaux réutilisés", "Économie circulaire", "Aménagement intérieur"],
+            "🌬️ Confort & Équipements": ["Mode de chauffage", "ECS", "Refroidissement", "Ventilation", "DHTic", "Logement traversant", "Nb de brasseurs d'air", "Type de brasseurs d'air", "Confort d'été (solutions techniques)"],
+            "💶 Aspects Financiers": ["Coût global", "Coût des travaux", "Coût de revient", "Coût moyen gros oeuvre", "Coût moyen second oeuvre", "Coût moyen par maxilot technique", "Aides financières", "Type de prêt locatif"],
+            "📉 Analyse Carbone (Lots IC)": ["Ic composants bâtiment", "Ic composants lot 1 - VRD", "Ic composants lot 2 - Fondations et infrastructures", "Ic composants lot 3 - Superstructure – Maçonnerie", "Ic composants lot 4 - Superstructure – Couverture – Étanchéité – Charpente – Zinguerie", "Ic composants lot 5 - Cloisonnement - Doublage - Plafonds suspendus - Menuiseries intérieures", "Ic composants lot 6 - Façades et menuiseries extérieures", "Ic composants lot 7 - Revêtements des sols, murs et plafonds - Chape - Peintures - Produits de décoration", "Ic composants lot 8 - CVC", "Ic composants lot 9 - Plomberie-sanitaire", "Ic composants lot 10 - Réseaux d'énergie (courant fort)", "Ic composants lot 11 - Réseaux de communication (courant faible)", "Ic composants lot 12 - Appareils élévateurs et autres équipements de transport intérieur", "Ic composants lot 13 - Equipements de production locale d'électricité", "Ic énergie bâtiment", "Ic énergie - Chauffage", "Ic énergie - Refroidissement", "Ic énergie - ECS", "Ic énergie - Auxiliaires ventilation", "Ic énergie - Auxiliaires distribution", "Ic énergie - Déplacements (ascenseurs, escalators, parkings)"]
+        };
+
+        // 2. Gestion de l'import Excel
+        document.getElementById('excel-file').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                const data = evt.target.result;
+                const workbook = XLSX.read(data, { type: 'binary' });
+                
+                // On prend la première feuille du fichier Excel
+                const firstSheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[firstSheetName];
+                
+                // Conversion en JSON (tableau d'objets)
+                const jsonData = XLSX.utils.sheet_to_json(worksheet);
+                
+                processGpsAndMarkers(jsonData);
+            };
+            reader.readAsBinaryString(file);
+        });
+
+        // 3. Géocodage via l'API Adresse et ajout des marqueurs
+        async function processGpsAndMarkers(data) {
+            markersGroup.clearLayers(); // On nettoie la carte
+            
+            for (let row of data) {
+                // Récupération de l'adresse (Colonnes exactes basées sur vos entêtes ou colonnes A, B, C)
+                // Équivalences souples si les colonnes s'appellent "nom de la rue" ou "Adresse de l'opération"
+                const rue = row["nom de la rue"] || row["Adresse de l'opération"] || "";
+                const ville = row["nom de la ville"] || row["Ville"] || "";
+                const cp = row["code postale"] || row["Code postal"] || "";
+                const nomProjet = row["Nom du projet"] || "Projet sans nom";
+
+                if (!rue && !ville) continue;
+
+                const queryAddress = `${rue}, ${cp} ${ville}`;
+                
+                try {
+                    // Appel de l'API Adresse du gouvernement
+                    const response = await fetch(`https://api-adresse.data.gouv.fr/search/?q=${encodeURIComponent(queryAddress)}&limit=1`);
+                    const result = await response.json();
+                    
+                    if (result.features && result.features.length > 0) {
+                        const coordinates = result.features[0].geometry.coordinates; // [longitude, latitude]
+                        const lat = coordinates[1];
+                        const lng = coordinates[0];
+                        
+                        // Création du marqueur sur la carte
+                        const marker = L.marker([lat, lng]).addTo(markersGroup);
+                        
+                        // Événement au clic sur le marqueur
+                        marker.on('click', () => {
+                            openSidebar(nomProjet, row);
+                            map.setView([lat, lng], 15); // Zoom sur le bâtiment
+                        });
+                    }
+                } catch (error) {
+                    console.error("Erreur de géocodage pour l'adresse : " + queryAddress, error);
+                }
+            }
+            
+            // Ajuster la vue de la carte pour englober tous les marqueurs si présents
+            if (markersGroup.getLayers().length > 0) {
+                const bounds = L.featureGroup(markersGroup.getLayers()).getBounds();
+                map.fitBounds(bounds);
+            }
+        }
+
+        // 4. Fonctions d'affichage du Dashboard (Sidebar)
+        function openSidebar(title, rowData) {
+            document.getElementById('map').classList.replace('w-full', 'w-2/3');
+            const sidebar = document.getElementById('sidebar');
+            sidebar.classList.replace('w-0', 'w-1/3');
+            
+            document.getElementById('dash-title').innerText = title;
+            
+            // Génération du contenu html par thématique
+            let htmlContent = "";
+            
+            for (const [themeName, fields] of Object.entries(thematiques)) {
+                let fieldsHtml = "";
+                
+                fields.forEach(field => {
+                    // On vérifie si la donnée existe dans la ligne Excel
+                    if (rowData[field] !== undefined) {
+                        fieldsHtml += `
+                            <div class="flex justify-between py-1.5 border-b border-gray-100 text-sm">
+                                <span class="text-gray-600 font-medium pr-2">${field} :</span>
+                                <span class="text-gray-900 text-right font-semibold">${rowData[field]}</span>
+                            </div>`;
+                    }
+                });
+                
+                // On n'affiche la thématique que si elle contient au moins une donnée
+                if (fieldsHtml !== "") {
+                    htmlContent += `
+                        <div class="bg-gray-50 p-4 rounded-lg border border-gray-200 shadow-sm">
+                            <h3 class="text-md font-bold text-blue-800 mb-2 border-b border-blue-200 pb-1">${themeName}</h3>
+                            <div class="space-y-1">${fieldsHtml}</div>
+                        </div>`;
+                }
+            }
+            
+            document.getElementById('dash-content').innerHTML = htmlContent || "<p class='text-gray-500'>Aucune donnée thématique trouvée.</p>";
+            
+            // Forcer Leaflet à recalculer sa taille suite au changement de largeur de la div
+            setTimeout(() => { map.invalidateSize(); }, 300);
+        }
+
+        function closeSidebar() {
+            document.getElementById('map').classList.replace('w-2/3', 'w-full');
+            document.getElementById('sidebar').classList.replace('w-1/3', 'w-0');
+            setTimeout(() => { map.invalidateSize(); }, 300);
+        }
+    </script>
+</body>
+</html>
